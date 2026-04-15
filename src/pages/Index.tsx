@@ -31,6 +31,8 @@ const ROOMS = [
   "Small room",
 ];
 
+const GOOGLE_SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL;
+
 type SubmittedBooking = {
   name: string;
   room: string;
@@ -47,6 +49,7 @@ const BookingForm = () => {
   const [endTime, setEndTime] = useState("");
   const [loggedBy, setLoggedBy] = useState("");
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedBooking, setSubmittedBooking] = useState<SubmittedBooking | null>(null);
   const selectedCountry =
     COUNTRY_OPTIONS.find((option) => option.countryCode === countryCode) ?? COUNTRY_OPTIONS[0];
@@ -78,7 +81,7 @@ const BookingForm = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !mobile || !room || !date || !startTime || !endTime || !loggedBy) {
       toast.error("Please fill in all fields");
@@ -89,12 +92,58 @@ const BookingForm = () => {
       return;
     }
 
-    setSubmittedBooking({
+    if (!GOOGLE_SCRIPT_URL) {
+      toast.error("Google Sheets connection is not configured yet");
+      return;
+    }
+
+    const formattedMobileNumber = `${selectedCountry.dialCode} ${mobile}`.trim();
+    const payload = {
       name,
-      room,
-      dateLabel: format(date, "PPP"),
-    });
-    resetForm();
+      // Google Sheets can try to parse leading "+" values as formulas during append.
+      mobileNumber: formattedMobileNumber.startsWith("+")
+        ? `'${formattedMobileNumber}`
+        : formattedMobileNumber,
+      inventoryType: room,
+      bookingDate: format(date, "yyyy-MM-dd"),
+      bookingDateLabel: format(date, "PPP"),
+      bookingTime: `${startTime} - ${endTime}`,
+      bookingLoggedInBy: loggedBy,
+      monthTabCandidates: [
+        format(date, "MMMM yyyy"),
+        format(date, "MMMM"),
+      ],
+    };
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(GOOGLE_SCRIPT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || "Failed to save booking");
+      }
+
+      setSubmittedBooking({
+        name,
+        room,
+        dateLabel: format(date, "PPP"),
+      });
+      resetForm();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to save booking";
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -232,8 +281,12 @@ const BookingForm = () => {
           />
         </div>
 
-        <Button type="submit" className="w-full rounded-xl text-base font-body font-semibold h-12 shadow-card hover:opacity-90 transition-opacity">
-          Submit Booking
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          className="w-full rounded-xl text-base font-body font-semibold h-12 shadow-card hover:opacity-90 transition-opacity disabled:cursor-not-allowed disabled:opacity-70"
+        >
+          {isSubmitting ? "Submitting..." : "Submit Booking"}
         </Button>
       </form>
 
