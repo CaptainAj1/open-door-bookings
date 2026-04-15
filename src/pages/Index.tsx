@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
@@ -19,41 +20,52 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { toast } from "sonner";
-import logo from "@/assets/logo.jpg";
+import odcLogo from "@/assets/open-door-logo.webp";
+import { COUNTRY_OPTIONS, TIME_OPTIONS } from "@/lib/booking-options";
 
 const ROOMS = [
   "Big Room",
   "Game Room",
   "Music Room",
-  "Classroom 1",
-  "Classroom 2",
+  "Classroom",
+  "Small room",
 ];
-
-const EXTENSIONS = ["+971", "+966", "+968", "+973", "+974", "+965", "+44", "+1"];
 
 const BookingForm = () => {
   const [name, setName] = useState("");
-  const [extension, setExtension] = useState("+971");
+  const [countryCode, setCountryCode] = useState("GE");
   const [mobile, setMobile] = useState("");
   const [room, setRoom] = useState("");
   const [date, setDate] = useState<Date>();
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [loggedBy, setLoggedBy] = useState("");
+  const [showSuccessBanner, setShowSuccessBanner] = useState(false);
+  const selectedCountry =
+    COUNTRY_OPTIONS.find((option) => option.countryCode === countryCode) ?? COUNTRY_OPTIONS[0];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !mobile || !room || !date || !startTime || !endTime || !loggedBy) {
+      setShowSuccessBanner(false);
       toast.error("Please fill in all fields");
       return;
     }
-    toast.success("Booking submitted successfully!", {
-      description: `${room} booked for ${name} on ${format(date, "PPP")}`,
-    });
+    setShowSuccessBanner(true);
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {showSuccessBanner ? (
+        <Alert className="border-emerald-200 bg-emerald-50 text-emerald-900">
+          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+          <AlertTitle>Booking submitted successfully.</AlertTitle>
+          <AlertDescription>
+            {room} booked for {name} on {date ? format(date, "PPP") : ""}.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
       {/* Name */}
       <div className="space-y-2">
         <Label htmlFor="name" className="font-body text-sm font-medium">Name</Label>
@@ -70,13 +82,17 @@ const BookingForm = () => {
       <div className="space-y-2">
         <Label className="font-body text-sm font-medium">Mobile Number</Label>
         <div className="flex gap-2">
-          <Select value={extension} onValueChange={setExtension}>
-            <SelectTrigger className="w-28 rounded-xl bg-card shadow-card">
-              <SelectValue />
+          <Select value={countryCode} onValueChange={setCountryCode}>
+            <SelectTrigger className="w-44 rounded-xl bg-card shadow-card">
+              <SelectValue>
+                {selectedCountry.flag} {selectedCountry.dialCode}
+              </SelectValue>
             </SelectTrigger>
-            <SelectContent>
-              {EXTENSIONS.map((ext) => (
-                <SelectItem key={ext} value={ext}>{ext}</SelectItem>
+            <SelectContent className="max-h-80">
+              {COUNTRY_OPTIONS.map((option) => (
+                <SelectItem key={option.countryCode} value={option.countryCode}>
+                  {option.flag} {option.name} ({option.dialCode})
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -138,22 +154,34 @@ const BookingForm = () => {
         <div className="flex gap-3 items-center">
           <div className="flex-1 space-y-1">
             <span className="text-xs text-muted-foreground font-body">Start Time</span>
-            <Input
-              type="time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              className="rounded-xl bg-card shadow-card"
-            />
+            <Select value={startTime} onValueChange={setStartTime}>
+              <SelectTrigger className="rounded-xl bg-card shadow-card">
+                <SelectValue placeholder="Select start time" />
+              </SelectTrigger>
+              <SelectContent className="max-h-80">
+                {TIME_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <span className="mt-5 text-muted-foreground">to</span>
           <div className="flex-1 space-y-1">
             <span className="text-xs text-muted-foreground font-body">End Time</span>
-            <Input
-              type="time"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-              className="rounded-xl bg-card shadow-card"
-            />
+            <Select value={endTime} onValueChange={setEndTime}>
+              <SelectTrigger className="rounded-xl bg-card shadow-card">
+                <SelectValue placeholder="Select end time" />
+              </SelectTrigger>
+              <SelectContent className="max-h-80">
+                {TIME_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>
@@ -183,7 +211,7 @@ const Index = () => {
       <div className="mx-auto max-w-lg px-4 py-8 animate-fade-in">
         {/* Header */}
         <div className="flex flex-col items-center mb-8">
-          <img src={logo} alt="The Open Door Centre" className="h-20 mb-4" />
+          <img src={odcLogo} alt="The Open Door Centre" className="h-20 mb-4 w-auto object-contain" />
           <h1 className="text-3xl font-heading font-light text-primary tracking-wide">
             Room Booking
           </h1>
