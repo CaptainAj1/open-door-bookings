@@ -107,6 +107,8 @@ const BookingForm = () => {
       inventoryType: room,
       bookingDate: format(date, "yyyy-MM-dd"),
       bookingDateLabel: format(date, "PPP"),
+      startTime,
+      endTime,
       bookingTime: `${startTime} - ${endTime}`,
       bookingLoggedInBy: loggedBy,
       monthTabCandidates: [
