@@ -1,3 +1,3 @@
-# Welcome to your Lovable project
+# The Open Door Center Bookings
 
-TODO: Document your project here
+Room booking application for The Open Door Center.
